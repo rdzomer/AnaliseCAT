@@ -1,133 +1,88 @@
-import { Pleito, Analista, StatusPleito, TipoPleitoEnum, SessaoAnalise } from '../types'; // Updated TipoPleito to TipoPleitoEnum
-import { MOCK_PLEITOS, MOCK_ANALISTAS } from '../constants';
+// src/services/apiService.ts
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "./firebase";
 
-// Simulate a database
-let pleitosDB: Pleito[] = MOCK_PLEITOS.length > 0 ? JSON.parse(JSON.stringify(MOCK_PLEITOS)) : []; 
-let analistasDB: Analista[] = JSON.parse(JSON.stringify(MOCK_ANALISTAS));
+import {
+  Pleito,
+  Analista,
+  StatusPleito,
+  TipoPleitoEnum,
+  SessaoAnalise,
+} from "../types";
 
-const simulateDelay = <T,>(data: T, delay: number = 300): Promise<T> => {
-  return new Promise(resolve => setTimeout(() => resolve(data), delay));
-};
+// ---------- coleções ----------
+const pleitosCol = collection(db, "pleitos");
+const analistasCol = collection(db, "analistas");
 
+// ---------- helpers ----------
+const docToData = <T>(snap: any): T => ({ id: snap.id, ...snap.data() } as T);
+
+// ---------- API ----------
 export const apiService = {
+  // PLEITOS -------------------------------------------------
   getPleitos: async (): Promise<Pleito[]> => {
-    console.log('API: Fetching pleitos...');
-    return simulateDelay(JSON.parse(JSON.stringify(pleitosDB))); 
+    const snap = await getDocs(pleitosCol);
+    return snap.docs.map((d) => docToData<Pleito>(d));
   },
 
   getPleitoById: async (id: string): Promise<Pleito | undefined> => {
-    console.log(`API: Fetching pleito ${id}...`);
-    const pleito = pleitosDB.find(p => p.id === id);
-    return simulateDelay(pleito ? JSON.parse(JSON.stringify(pleito)) : undefined);
+    const snap = await getDoc(doc(pleitosCol, id));
+    return snap.exists() ? docToData<Pleito>(snap) : undefined;
   },
 
-  createPleito: async (pleitoData: Omit<Pleito, 'id'>): Promise<Pleito> => {
-    console.log('API: Creating pleito...', pleitoData);
-    const newPleito: Pleito = {
-      id: `pleito-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      // Required base fields
-      ncm: pleitoData.ncm,
-      produto: pleitoData.produto,
-      tipoPleito: pleitoData.tipoPleito || TipoPleitoEnum.INCLUSAO, // Default if not provided
-      prazo: pleitoData.prazo,
-      status: pleitoData.status || StatusPleito.PENDENTE,
-      ordemOriginal: pleitoData.ordemOriginal, 
-      pautaIdentifier: pleitoData.pautaIdentifier, // Include pautaIdentifier
-      
-      // New SessaoAnalise field
-      sessaoAnalise: pleitoData.sessaoAnalise,
-
-      // Optional base fields
-      pleiteante: pleitoData.pleiteante || '',
-      processoSEIPublico: pleitoData.processoSEIPublico || '',
-      processoSEIRestrito: pleitoData.processoSEIRestrito || '',
-      responsavel: pleitoData.responsavel,
-      dataDistribuicao: pleitoData.dataDistribuicao,
-      
-      // Specific dynamic fields
-      notaTecnica: pleitoData.notaTecnica || '',
-      posicaoCAT: pleitoData.posicaoCAT || '',
-      reducaoII: pleitoData.reducaoII || '',
-      quota: pleitoData.quota || '', // General quota, might be replaced by specific ones below
-      paisPendente: pleitoData.paisPendente || '',
-      prazoResposta: pleitoData.prazoResposta || '',
-      situacaoEspecifica: pleitoData.situacaoEspecifica || '',
-      paisEstadoParte: pleitoData.paisEstadoParte || '',
-      exTarifario: pleitoData.exTarifario || '',
-      aliquotaAplicada: pleitoData.aliquotaAplicada || '',
-      aliquotaAplicadaPleitoZero: pleitoData.aliquotaAplicadaPleitoZero || false,
-      quotaValor: pleitoData.quotaValor || '',
-      quotaUnidade: pleitoData.quotaUnidade || '',
-      quotaInfoAdicional: pleitoData.quotaInfoAdicional || '',
-      quotaPrazo: pleitoData.quotaPrazo || '',
-      terminoVigenciaMedida: pleitoData.terminoVigenciaMedida || '',
-      aliquotaPretendida: pleitoData.aliquotaPretendida || '',
-      aliquotaIIVigente: pleitoData.aliquotaIIVigente || '',
-      aliquotaIIPleiteada: pleitoData.aliquotaIIPleiteada || '',
-      descricaoAlternativa: pleitoData.descricaoAlternativa || '',
-      tipoPleitoDetalhado: pleitoData.tipoPleitoDetalhado || '',
-      tec: pleitoData.tec || '',
-      alteracaoTarifaria: pleitoData.alteracaoTarifaria || '',
-      
-      // CGIM Analysis fields
-      resumoPleito: pleitoData.resumoPleito || '',
-      dadosComercio: pleitoData.dadosComercio || '',
-      analiseTecnica: pleitoData.analiseTecnica || '',
-      sugestaoCGIM: pleitoData.sugestaoCGIM || '',
-      anotacoes: pleitoData.anotacoes || [],
-
-      // Deprecated field
-      paisOrigem: pleitoData.paisOrigem || '',
-    };
-    pleitosDB.unshift(newPleito); 
-    return simulateDelay(JSON.parse(JSON.stringify(newPleito)));
+  createPleito: async (
+    pleitoData: Omit<Pleito, "id">
+  ): Promise<Pleito> => {
+    const ref = await addDoc(pleitosCol, {
+      ...pleitoData,
+      createdAt: Timestamp.now(),
+    });
+    return { id: ref.id, ...pleitoData };
   },
 
-  updatePleito: async (updatedPleito: Pleito): Promise<Pleito> => {
-    console.log('API: Updating pleito...', updatedPleito);
-    const index = pleitosDB.findIndex(p => p.id === updatedPleito.id);
-    if (index === -1) throw new Error('Pleito não encontrado para atualização.');
-    
-    // Ensure all fields are preserved or updated
-    pleitosDB[index] = { 
-        ...pleitosDB[index], 
-        ...updatedPleito    
-    };
-    return simulateDelay(JSON.parse(JSON.stringify(pleitosDB[index])));
+  updatePleito: async (
+    id: string,
+    patch: Partial<Pleito>
+  ): Promise<Pleito> => {
+    await updateDoc(doc(pleitosCol, id), patch);
+    const snap = await getDoc(doc(pleitosCol, id));
+    return docToData<Pleito>(snap);
   },
 
-  deletePleito: async (id: string): Promise<void> => {
-    console.log(`API: Deleting pleito ${id}...`);
-    pleitosDB = pleitosDB.filter(p => p.id !== id);
-    return simulateDelay(undefined);
-  },
+  deletePleito: async (id: string): Promise<void> =>
+    deleteDoc(doc(pleitosCol, id)),
 
+  // ANALISTAS ----------------------------------------------
   getAnalistas: async (): Promise<Analista[]> => {
-    console.log('API: Fetching analistas...');
-    return simulateDelay(JSON.parse(JSON.stringify(analistasDB)));
+    const snap = await getDocs(analistasCol);
+    return snap.docs.map((d) => docToData<Analista>(d));
   },
 
-  createAnalista: async (analistaData: Omit<Analista, 'id'>): Promise<Analista> => {
-    console.log('API: Creating analista...', analistaData);
-    const newAnalista: Analista = {
-      ...analistaData,
-      id: `analista-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    };
-    analistasDB.push(newAnalista);
-    return simulateDelay(JSON.parse(JSON.stringify(newAnalista)));
+  createAnalista: async (
+    data: Omit<Analista, "id">
+  ): Promise<Analista> => {
+    const ref = await addDoc(analistasCol, data);
+    return { id: ref.id, ...data };
   },
 
-  updateAnalista: async (updatedAnalista: Analista): Promise<Analista> => {
-     console.log('API: Updating analista...', updatedAnalista);
-    const index = analistasDB.findIndex(a => a.id === updatedAnalista.id);
-    if (index === -1) throw new Error('Analista não encontrado para atualização.');
-    analistasDB[index] = { ...analistasDB[index], ...updatedAnalista };
-    return simulateDelay(JSON.parse(JSON.stringify(analistasDB[index])));
+  updateAnalista: async (
+    id: string,
+    patch: Partial<Analista>
+  ): Promise<Analista> => {
+    await updateDoc(doc(analistasCol, id), patch);
+    const snap = await getDoc(doc(analistasCol, id));
+    return docToData<Analista>(snap);
   },
-  
-  deleteAnalista: async (id: string): Promise<void> => {
-    console.log(`API: Deleting analista ${id}...`);
-    analistasDB = analistasDB.filter(a => a.id !== id);
-    return simulateDelay(undefined);
-  },
+
+  deleteAnalista: async (id: string): Promise<void> =>
+    deleteDoc(doc(analistasCol, id)),
 };
