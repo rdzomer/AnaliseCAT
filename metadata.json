@@ -1,0 +1,6 @@
+{
+  "name": "BACKUP CGIM Tariff Claim Management",
+  "description": "A web application to automate the workflow of analyzing tariff claims for CGIM, from PDF ingestion to final document generation.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
