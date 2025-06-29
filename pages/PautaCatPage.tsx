@@ -21,7 +21,7 @@ import { useAuth } from '../hooks/useAuth';
 const NCM_FILTER_LIST_KEY = 'cgimNcmFilterList';
 const NCM_FILTER_TOGGLE_KEY = 'cgimFilterToggleState';
 
-export const PautaCatPage: React.FC = () => {
+const PautaCatPage: React.FC = () => {
   const [pleitos, setPleitos] = useState<Pleito[]>([]);
   const [isLoading, setIsLoading] = useState(true); 
   const [deletingId, setDeletingId] = useState<string | null>(null); 
@@ -437,3 +437,5 @@ export const PautaCatPage: React.FC = () => {
     </div>
   );
 };
+
+export default PautaCatPage;

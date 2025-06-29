@@ -1,90 +1,115 @@
+// src/pages/LoginPage.tsx
+
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import Button from '../components/Button';
 import Input from '../components/Input';
+import Button from '../components/Button';
 import Select from '../components/Select';
+import { useAuth } from '../hooks/useAuth';
 import { Role } from '../types';
-import { APP_NAME } from '../constants';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { roleLabels } from '../constants';
 
 const LoginPage: React.FC = () => {
+  const auth = useAuth();
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [selectedRole, setSelectedRole] = useState<Role>(Role.ANALISTA);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const auth = useAuth();
-  const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsLoading(true);
-    if (!password) {
-        setError("Por favor, insira a senha.");
-        setIsLoading(false);
-        return;
-    }
     try {
-      await auth.login(email, selectedRole, password);
-      navigate('/');
+      if (isCreatingAccount) {
+        await auth.signUp(email, password, name, selectedRole);
+      } else {
+        await auth.signIn(email, password);
+      }
     } catch (err: any) {
-      setError(err.message || 'Falha no login. Verifique suas credenciais e senha.');
-    } finally {
-      setIsLoading(false);
+      console.error(err);
+      setError(err.message || 'Erro ao autenticar');
     }
   };
 
-  // Only Gestor and Analista are selectable for login for non-admin users. Admin role is not listed here.
-  const roleOptions = [
-    { value: Role.GESTOR, label: Role.GESTOR },
-    { value: Role.ANALISTA, label: Role.ANALISTA }
-  ];
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-700 to-indigo-900 p-4">
-      <div className="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-md transform transition-all hover:scale-105 duration-300">
-        <h1 className="text-3xl font-bold text-center text-blue-700 mb-2">{APP_NAME}</h1>
-        <p className="text-center text-gray-600 mb-8">Bem-vindo! Selecione seu perfil e insira a senha.</p>
-        
-        <form onSubmit={handleLogin} className="space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+        <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">
+          CGIM Gestão de Pleitos
+        </h2>
+        <p className="text-center text-gray-600 mb-6">
+          {isCreatingAccount
+            ? 'Crie sua conta para acessar.'
+            : 'Bem-vindo! Faça o login para continuar.'}
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {isCreatingAccount && (
+            <>
+              <Input
+                label="Nome Completo"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </>
+          )}
           <Input
-            label="Email (opcional para demo)"
-            id="email"
+            label="Email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="seu.email@example.com"
-          />
-          <Select
-            label="Perfil de Acesso"
-            id="role"
-            options={roleOptions}
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value as Role)}
             required
           />
           <Input
             label="Senha"
-            id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="********"
             required
           />
-          
-          {error && <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
-          
-          <Button type="submit" variant="primary" size="lg" className="w-full" disabled={isLoading}>
-            {isLoading ? <LoadingSpinner size="sm" color="text-white"/> : 'Entrar'}
+          {isCreatingAccount && (
+            <Select
+              label="Perfil de Acesso"
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value as Role)}
+              options={Object.entries(roleLabels).map(([value, label]) => ({
+                value,
+                label,
+              }))}
+              required
+            />
+          )}
+          {error && (
+            <p className="text-sm text-red-600 bg-red-100 p-2 rounded">{error}</p>
+          )}
+          <Button type="submit" className="w-full">
+            {isCreatingAccount ? 'Criar Conta' : 'Entrar'}
           </Button>
         </form>
-        <p className="text-xs text-gray-500 mt-8 text-center">
-          Senha para demonstração: CGIM2025
-        </p>
+        <div className="mt-4 text-center">
+          {isCreatingAccount ? (
+            <>
+              Já tem uma conta?{' '}
+              <button
+                onClick={() => setIsCreatingAccount(false)}
+                className="text-blue-600 hover:underline"
+              >
+                Faça o login
+              </button>
+            </>
+          ) : (
+            <>
+              Não tem uma conta?{' '}
+              <button
+                onClick={() => setIsCreatingAccount(true)}
+                className="text-blue-600 hover:underline"
+              >
+                Crie uma aqui
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
