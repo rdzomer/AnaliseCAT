@@ -74,4 +74,4 @@ try {
   };
 }
 
-export { handler };
+module.exports = { handler };
