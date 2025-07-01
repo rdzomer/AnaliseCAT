@@ -24,19 +24,26 @@ const handler: Handler = async (event) => {
     const response = result.response;
     const rawText = response.text();
 
-    // Tenta fazer parsing do JSON com correções automáticas
-    let pleitos = [];
-    try {
-      const startIndex = rawText.indexOf('[');
-      const endIndex = rawText.lastIndexOf(']') + 1;
-      const jsonString = rawText.substring(startIndex, endIndex);
-      pleitos = JSON.parse(jsonString);
-    } catch (err) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: "Erro ao interpretar JSON do Gemini", rawText })
-      };
-    }
+   // Tenta fazer parsing do JSON com correções automáticas
+let pleitos = [];
+try {
+  const startIndex = rawText.indexOf('[');
+  const endIndex = rawText.lastIndexOf(']') + 1;
+  if (startIndex === -1 || endIndex === -1) {
+    throw new Error("Formato inesperado na resposta do Gemini. Conteúdo bruto:\n" + rawText);
+  }
+  const jsonString = rawText.substring(startIndex, endIndex);
+  pleitos = JSON.parse(jsonString);
+} catch (err) {
+  return {
+    statusCode: 500,
+    body: JSON.stringify({
+      error: "Erro ao interpretar JSON do Gemini",
+      rawText,
+      details: String(err)
+    })
+  };
+}
 
     // Decodifica entidades HTML
     const decodedPleitos = pleitos.map((pleito: any) => {
