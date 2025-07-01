@@ -259,7 +259,20 @@ const PautaCatPage: React.FC = () => {
     console.log(`Sending HTML content from ${file.name} (length: ${documentText.length}, first 500 chars) to Gemini:`, documentText.substring(0, 500) + "...");
 
     try {
-      const extractedPleitos = await geminiService.extractPleitosFromDocumentText(documentText, file.name);
+      const response = await fetch('/.netlify/functions/gemini', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    documentText,
+    fileName: file.name,
+  }),
+});
+
+if (!response.ok) {
+  throw new Error(`Erro ao chamar a função Gemini: ${response.statusText}`);
+}
+
+const extractedPleitos = await response.json();
 
       if (extractedPleitos.length === 0) {
         setSuccessMessage(`Nenhum pleito extraído do arquivo ${file.name}. O Gemini pode não ter encontrado dados formatados como pleitos ou o conteúdo fornecido não continha pleitos claros.`);
