@@ -64,11 +64,14 @@ try {
       body: JSON.stringify(decodedPleitos)
     };
   } catch (error) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Erro interno do servidor', details: String(error) })
-    };
-  }
-};
+  console.error("Erro final no Gemini handler:", error);
+  return {
+    statusCode: 500,
+    body: JSON.stringify({
+      error: 'Erro interno do servidor no Gemini handler',
+      details: String(error),
+    }),
+  };
+}
 
 export { handler };
